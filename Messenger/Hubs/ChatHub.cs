@@ -11,7 +11,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Messenger.Hubs;  // ✅ Исправлено с MessengerApp
 
-//[Authorize]
+[Authorize]
 public class ChatHub : Hub
 {
     private readonly IMessageService _messageService;

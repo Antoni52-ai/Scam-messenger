@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Messenger.Models.ViewModel;
 using Messenger.Services.Interfaces;
 
 namespace Messenger.Controllers;
 
+[Authorize] 
 public class ChatController : Controller
 {
     private readonly IMessageService _messageService;

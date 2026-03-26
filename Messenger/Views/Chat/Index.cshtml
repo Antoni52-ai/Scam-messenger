@@ -7,6 +7,13 @@
     <link rel="stylesheet" href="~/css/chat.css" />
 }
 
+<div style="padding: 10px; background: #f5f5f5; border-bottom: 1px solid #ddd;">
+    <span>Привет, @User.Identity!.Name!</span>
+    <form asp-controller="Account" asp-action="Logout" method="post" style="display: inline;">
+        <button type="submit" class="btn btn-sm btn-danger">Выйти</button>
+    </form>
+</div>
+
 <div class="chat-container">
     <!-- 🔹 Боковая панель: онлайн-пользователи -->
     <aside class="sidebar">
