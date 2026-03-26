@@ -14,19 +14,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function initializeSignalR() {
     connection = new signalR.HubConnectionBuilder()
         .withUrl('/hub/chat', {
-            withCredentials: false  // Отключаем для теста без авторизации
+            withCredentials: false
         })
         .withAutomaticReconnect([0, 2000, 5000, 10000])
         .configureLogging(signalR.LogLevel.Warning)
         .build();
 
-    // 📥 Регистрация обработчиков
     registerSignalRHandlers();
 
     try {
         await connection.start();
         console.log('✅ SignalR connected');
         showStatus('Подключено', 'success');
+
+        // 🔥 Запрашиваем список пользователей ПОСЛЕ успешного подключения
+        await connection.invoke('GetUserList');
+        console.log('📋 User list requested');
+
     } catch (err) {
         console.error('❌ SignalR connection failed:', err);
         showStatus('Ошибка подключения', 'error');
@@ -35,6 +39,11 @@ async function initializeSignalR() {
 }
 
 function registerSignalRHandlers() {
+
+    // Обработка списка пользователей
+    connection.on('UserList', (users) => {
+        updateUserList(users);
+    });
     // 📨 Новое сообщение
     connection.on('NewMessage', (message) => {
         appendMessage(message);
@@ -77,7 +86,15 @@ async function sendMessage() {
     if (!content || !connection) return;
 
     try {
-        await connection.invoke('SendMessage', content);
+        if (window.chatConfig.targetUserId) {
+            // Приватное сообщение
+            await connection.invoke('SendPrivateMessage', window.chatConfig.targetUserId, content);
+            console.log(`Sent private message to ${window.chatConfig.targetUserName}`);
+        } else {
+            // Общее сообщение
+            await connection.invoke('SendMessage', content);
+        }
+
         input.value = '';
         hideTypingIndicator();
     } catch (err) {
@@ -85,6 +102,7 @@ async function sendMessage() {
         showStatus('❌ Не удалось отправить', 'error');
     }
 }
+
 
 // 🔹 Индикатор набора
 function handleTyping() {
@@ -278,4 +296,153 @@ function setupEventListeners() {
 
     input?.addEventListener('input', handleTyping);
     input?.addEventListener('blur', hideTypingIndicator);
+
+    // 🔥 ДОБАВЬ ЭТО:
+    const backBtn = document.getElementById('backToPublicChat');
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            returnToPublicChat();
+            backBtn.style.display = 'none';
+        });
+    }
+}
+
+// Обновление списка пользователей онлайн
+function updateUserList(users) {
+    const onlineList = document.getElementById('onlineUsers');
+    const onlineCount = document.getElementById('onlineCount');
+
+    if (!onlineList || !onlineCount) return;
+
+    onlineList.innerHTML = '';
+
+    // Фильтруем текущего пользователя
+    const currentUserName = window.chatConfig?.currentUserName;
+    const otherUsers = users.filter(u => u.userName !== currentUserName);
+
+    otherUsers.forEach(user => {
+        const li = document.createElement('li');
+        li.className = 'user-item';
+        li.style.cursor = 'pointer';
+        li.style.padding = '8px';
+        li.style.borderRadius = '4px';
+        li.style.marginBottom = '4px';
+        li.innerHTML = `
+            <span class="user-status online" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4caf50;margin-right:8px;"></span>
+            <span class="user-name">${escapeHtml(user.userName)}</span>
+        `;
+
+        // Клик для начала приватного чата
+        li.onclick = () => startPrivateChat(user.userId, user.userName);
+
+        onlineList.appendChild(li);
+    });
+
+    onlineCount.textContent = otherUsers.length;
+}
+
+// Начало приватного чата
+function startPrivateChat(userId, userName) {
+    window.chatConfig.targetUserId = userId;
+    window.chatConfig.targetUserName = userName;
+
+    // Обновляем заголовок чата
+    const chatTitle = document.getElementById('chatTitle');
+    if (chatTitle) {
+        chatTitle.textContent = `Приватный чат с ${userName}`;
+        chatTitle.style.color = '#007aff';
+    }
+
+    // Очищаем сообщения
+    const container = document.getElementById('messagesContainer');
+    if (container) {
+        container.innerHTML = '<div class="system-message">Начало приватного чата с ' + userName + '</div>';
+    }
+
+    console.log(`Started private chat with ${userName} (${userId})`);
+}
+
+// Вернуться в общий чат
+function returnToPublicChat() {
+    window.chatConfig.targetUserId = null;
+    window.chatConfig.targetUserName = null;
+
+    const chatTitle = document.getElementById('chatTitle');
+    if (chatTitle) {
+        chatTitle.textContent = 'Общий чат';
+        chatTitle.style.color = '';
+    }
+
+    // Здесь можно загрузить последние сообщения из общего чата
+    console.log('Returned to public chat');
+}
+
+// Обновление списка пользователей онлайн
+function updateUserList(users) {
+    const onlineList = document.getElementById('onlineUsers');
+    const onlineCount = document.getElementById('onlineCount');
+
+    if (!onlineList || !onlineCount) return;
+
+    onlineList.innerHTML = '';
+
+    const currentUserName = window.chatConfig?.currentUserName;
+    const otherUsers = users.filter(u => u.userName !== currentUserName);
+
+    otherUsers.forEach(user => {
+        const li = document.createElement('li');
+        li.className = 'user-item';
+        li.style.cursor = 'pointer';
+        li.style.padding = '8px';
+        li.style.borderRadius = '4px';
+        li.style.marginBottom = '4px';
+        li.innerHTML = `
+            <span class="user-status online" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4caf50;margin-right:8px;"></span>
+            <span class="user-name">${escapeHtml(user.userName)}</span>
+        `;
+
+        li.onclick = () => startPrivateChat(user.userId, user.userName);
+        onlineList.appendChild(li);
+    });
+
+    onlineCount.textContent = otherUsers.length;
+}
+
+// Начало приватного чата
+function startPrivateChat(userId, userName) {
+    window.chatConfig.targetUserId = userId;
+    window.chatConfig.targetUserName = userName;
+
+    const chatTitle = document.getElementById('chatTitle');
+    if (chatTitle) {
+        chatTitle.textContent = `Приватный чат с ${userName}`;
+        chatTitle.style.color = '#007aff';
+    }
+
+    const container = document.getElementById('messagesContainer');
+    if (container) {
+        container.innerHTML = '<div class="system-message">Начало приватного чата с ' + userName + '</div>';
+    }
+
+    // Показываем кнопку "Вернуться"
+    const backBtn = document.getElementById('backToPublicChat');
+    if (backBtn) {
+        backBtn.style.display = 'inline-block';
+    }
+
+    console.log(`Started private chat with ${userName} (${userId})`);
+}
+
+// Вернуться в общий чат
+function returnToPublicChat() {
+    window.chatConfig.targetUserId = null;
+    window.chatConfig.targetUserName = null;
+
+    const chatTitle = document.getElementById('chatTitle');
+    if (chatTitle) {
+        chatTitle.textContent = 'Общий чат';
+        chatTitle.style.color = '';
+    }
+
+    console.log('Returned to public chat');
 }

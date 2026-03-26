@@ -136,6 +136,17 @@ public class ChatHub : Hub
         }
     }
 
+    public async Task GetUserList()
+    {
+        var users = _connections.Values.Select(u => new
+        {
+            u.UserId,
+            u.UserName
+        }).ToList();
+
+        await Clients.Caller.SendAsync("UserList", users);
+    }
+
     public async Task JoinRoom(string roomName)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, roomName);

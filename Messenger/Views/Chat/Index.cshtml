@@ -7,6 +7,14 @@
     <link rel="stylesheet" href="~/css/chat.css" />
 }
 
+<header class="chat-header">
+    <h3 id="chatTitle">Общий чат</h3>
+    <button id="backToPublicChat" class="btn btn-sm" style="display:none;padding:5px 10px;font-size:12px;">
+        ← Вернуться в общий чат
+    </button>
+    <span id="typingIndicator" class="typing-indicator"></span>
+</header>
+
 <div style="padding: 10px; background: #f5f5f5; border-bottom: 1px solid #ddd;">
     <span>Привет, @User.Identity!.Name!</span>
     <form asp-controller="Account" asp-action="Logout" method="post" style="display: inline;">
