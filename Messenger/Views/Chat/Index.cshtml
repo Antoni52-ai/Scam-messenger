@@ -1,0 +1,53 @@
+﻿@model Messenger.Models.ViewModel.ChatViewModel
+@{
+    ViewData["Title"] = "Чат";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/chat.css" />
+}
+
+<div class="chat-container">
+    <!-- 🔹 Боковая панель: онлайн-пользователи -->
+    <aside class="sidebar">
+        <h4>Онлайн (<span id="onlineCount">0</span>)</h4>
+        <ul id="onlineUsers" class="user-list">
+            @* Заполняется через SignalR *@
+        </ul>
+    </aside>
+
+    <!-- 🔹 Основная область чата -->
+    <main class="chat-area">
+        <header class="chat-header">
+            <h3 id="chatTitle">Общий чат</h3>
+            <span id="typingIndicator" class="typing-indicator"></span>
+        </header>
+
+        <div id="messagesContainer" class="messages-container">
+            @foreach (var msg in Model.RecentMessages)
+            {
+                <partial name="_MessagePartial" model="msg" />
+            }
+        </div>
+
+        <div class="chat-input">
+            <textarea id="messageInput" 
+                      placeholder="Введите сообщение..." 
+                      rows="2"
+                      maxlength="2000"></textarea>
+            <button id="sendBtn" class="btn-send">➤</button>
+        </div>
+    </main>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="~/js/chat.js"></script>
+    <script>
+        // Инициализация с данными из Razor
+        window.chatConfig = {
+            currentUserName: '@Model.CurrentUser',
+            targetUserId: '@ViewBag.TargetUserId'
+        };
+    </script>
+}
