@@ -1,15 +1,19 @@
-﻿.vs/
-# Build results
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build outputs
 [Bb]in/
 [Oo]bj/
 *.dll
 *.exe
 *.pdb
 
-# User-specific files
-*.user
-*.suo
-*.userprefs
+# User secrets & local config
+appsettings.Development.json
+appsettings.Production.json
+secrets.json
 
 # Visual Studio Code
 .vscode/
@@ -26,13 +30,13 @@ logs/
 *.db-shm
 *.db-wal
 
-# App settings with secrets
-appsettings.Development.json
-appsettings.Production.json
-
 # Publish output
 publish/
 
 # Temporary files
 *.tmp
 *.temp
+
+# OS
+.DS_Store
+Thumbs.db
