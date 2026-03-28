@@ -1,0 +1,38 @@
+﻿.vs/
+# Build results
+[Bb]in/
+[Oo]bj/
+*.dll
+*.exe
+*.pdb
+
+# User-specific files
+*.user
+*.suo
+*.userprefs
+
+# Visual Studio Code
+.vscode/
+
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# App settings with secrets
+appsettings.Development.json
+appsettings.Production.json
+
+# Publish output
+publish/
+
+# Temporary files
+*.tmp
+*.temp

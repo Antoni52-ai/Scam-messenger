@@ -1,0 +1,33 @@
+﻿@model Messenger.Controllers.RegisterViewModel
+@{
+    ViewData["Title"] = "Регистрация";
+}
+
+<div style="max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+    <h2>Регистрация</h2>
+    
+    <form asp-action="Register" method="post">
+        <div asp-validation-summary="All" style="color: red;"></div>
+        
+        <div style="margin-bottom: 15px;">
+            <label>Имя пользователя:</label>
+            <input asp-for="Username" class="form-control" style="width: 100%; padding: 8px;" />
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label>Email:</label>
+            <input asp-for="Email" class="form-control" style="width: 100%; padding: 8px;" />
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label>Пароль:</label>
+            <input asp-for="Password" type="password" class="form-control" style="width: 100%; padding: 8px;" />
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">Зарегистрироваться</button>
+    </form>
+    
+    <p style="margin-top: 15px;">
+        Уже есть аккаунт? <a asp-action="Login">Войти</a>
+    </p>
+</div>
