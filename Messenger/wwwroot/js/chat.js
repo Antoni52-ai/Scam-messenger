@@ -29,8 +29,10 @@ async function initializeSignalR() {
         const dot = document.getElementById('connectionStatusDot');
         if (dot) dot.className = 'connection-dot connected';
 
+        // Join room to get message history + trigger user list
+        await connection.invoke('JoinRoom', 'general');
         await connection.invoke('GetUserList');
-        console.log('User list requested');
+        console.log('Joined room and requested user list');
 
     } catch (err) {
         console.error('SignalR connection failed:', err);
@@ -56,7 +58,7 @@ function registerSignalRHandlers() {
 
     // Пользователь подключился
     connection.on('UserJoined', (user) => {
-        addOnlineUser(user.userName);
+        addOnlineUser(user.userId, user.userName);
         showSystemMessage(`${user.userName} присоединился`);
     });
 
@@ -73,7 +75,7 @@ function registerSignalRHandlers() {
 
     // Обновление списка онлайн
     connection.on('OnlineUsersUpdated', (users) => {
-        updateOnlineList(users);
+        updateUserList(users);
     });
 
     // Системные сообщения
@@ -91,6 +93,7 @@ function registerSignalRHandlers() {
             fragment.appendChild(el);
         });
         container.insertBefore(fragment, container.firstChild);
+        scrollToBottom();
     });
 
     // Подгрузка старых сообщений
@@ -147,57 +150,78 @@ function handleTyping() {
     }, TYPING_DELAY);
 }
 
-// Обновление списка онлайн-пользователей
-function updateOnlineList(users) {
+// Helper: get initials from username
+function getInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+}
+
+// Helper: clear all children from an element (safe alternative to innerHTML = '')
+function clearChildren(el) {
+    while (el.firstChild) el.removeChild(el.firstChild);
+}
+
+// Helper: build a user list item with avatar
+function buildUserItem(userId, userName) {
+    const li = document.createElement('li');
+    li.className = 'user-item';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'user-avatar';
+    avatar.textContent = getInitials(userName);
+
+    const dot = document.createElement('span');
+    dot.className = 'user-status online';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'user-name';
+    nameSpan.textContent = userName;
+
+    li.appendChild(avatar);
+    li.appendChild(dot);
+    li.appendChild(nameSpan);
+
+    if (userId) {
+        li.onclick = () => startPrivateChat(userId, userName);
+    }
+
+    return li;
+}
+
+// Обновление списка пользователей онлайн
+function updateUserList(users) {
     const onlineList = document.getElementById('onlineUsers');
     const onlineCount = document.getElementById('onlineCount');
 
     if (!onlineList || !onlineCount) return;
 
-    onlineList.innerHTML = '';
+    clearChildren(onlineList);
 
-    if (users && Array.isArray(users)) {
-        users.forEach(user => {
-            const li = document.createElement('li');
-            li.className = 'user-item';
+    const currentUserName = window.chatConfig?.currentUserName;
+    const otherUsers = (users || []).filter(u => u.userName !== currentUserName);
 
-            const statusSpan = document.createElement('span');
-            statusSpan.className = 'user-status online';
+    otherUsers.forEach(user => {
+        onlineList.appendChild(buildUserItem(user.userId, user.userName));
+    });
 
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'user-name';
-            nameSpan.textContent = user.userName;
-
-            li.appendChild(statusSpan);
-            li.appendChild(nameSpan);
-            onlineList.appendChild(li);
-        });
-        onlineCount.textContent = users.length;
-    }
+    onlineCount.textContent = otherUsers.length;
 }
 
 // Добавить пользователя в список онлайн
-function addOnlineUser(userName) {
+function addOnlineUser(userId, userName) {
     const onlineList = document.getElementById('onlineUsers');
     if (!onlineList) return;
+
+    // Skip self
+    if (userName === window.chatConfig?.currentUserName) return;
 
     const existing = Array.from(onlineList.querySelectorAll('.user-name'))
         .some(el => el.textContent === userName);
 
     if (!existing) {
-        const li = document.createElement('li');
-        li.className = 'user-item';
-
-        const statusSpan = document.createElement('span');
-        statusSpan.className = 'user-status online';
-
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'user-name';
-        nameSpan.textContent = userName;
-
-        li.appendChild(statusSpan);
-        li.appendChild(nameSpan);
-        onlineList.appendChild(li);
+        onlineList.appendChild(buildUserItem(userId, userName));
 
         const count = document.getElementById('onlineCount');
         if (count) {
@@ -314,10 +338,11 @@ function showStatus(text, type) {
     if (!statusEl) {
         statusEl = document.createElement('div');
         statusEl.id = 'connectionStatus';
-        statusEl.style.cssText = 'position:fixed;top:10px;right:10px;padding:8px 16px;border-radius:4px;z-index:1000;font-size:14px;font-family:Share Tech Mono,monospace;border:1px solid;';
+        statusEl.style.cssText = 'position:fixed;top:10px;right:10px;padding:8px 16px;border-radius:4px;z-index:1000;font-size:14px;font-family:Share Tech Mono,monospace;border:1px solid;transition:opacity 0.3s;';
         document.body.appendChild(statusEl);
     }
 
+    statusEl.style.opacity = '1';
     statusEl.textContent = text;
     statusEl.style.backgroundColor = type === 'success' ? 'rgba(0,255,136,0.15)' :
         type === 'error' ? 'rgba(255,0,170,0.15)' : 'rgba(0,240,255,0.15)';
@@ -397,44 +422,6 @@ function setupEventListeners() {
     addLoadMoreButton();
 }
 
-// Обновление списка пользователей онлайн
-function updateUserList(users) {
-    const onlineList = document.getElementById('onlineUsers');
-    const onlineCount = document.getElementById('onlineCount');
-
-    if (!onlineList || !onlineCount) return;
-
-    onlineList.innerHTML = '';
-
-    const currentUserName = window.chatConfig?.currentUserName;
-    const otherUsers = users.filter(u => u.userName !== currentUserName);
-
-    otherUsers.forEach(user => {
-        const li = document.createElement('li');
-        li.className = 'user-item';
-        li.style.cursor = 'pointer';
-        li.style.padding = '8px';
-        li.style.borderRadius = '4px';
-        li.style.marginBottom = '4px';
-
-        const statusSpan = document.createElement('span');
-        statusSpan.className = 'user-status online';
-        statusSpan.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:50%;background:#4caf50;margin-right:8px;';
-
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'user-name';
-        nameSpan.textContent = user.userName;
-
-        li.appendChild(statusSpan);
-        li.appendChild(nameSpan);
-
-        li.onclick = () => startPrivateChat(user.userId, user.userName);
-        onlineList.appendChild(li);
-    });
-
-    onlineCount.textContent = otherUsers.length;
-}
-
 // Начало приватного чата
 function startPrivateChat(userId, userName) {
     window.chatConfig.targetUserId = userId;
@@ -448,7 +435,7 @@ function startPrivateChat(userId, userName) {
 
     const container = document.getElementById('messagesContainer');
     if (container) {
-        container.textContent = '';
+        clearChildren(container);
         const sysMsg = document.createElement('div');
         sysMsg.className = 'system-message';
         sysMsg.textContent = 'Начало приватного чата с ' + userName;
@@ -476,7 +463,7 @@ function returnToPublicChat() {
     }
 
     const container = document.getElementById('messagesContainer');
-    if (container) container.textContent = '';
+    if (container) clearChildren(container);
 
     // Re-add load more button
     addLoadMoreButton();

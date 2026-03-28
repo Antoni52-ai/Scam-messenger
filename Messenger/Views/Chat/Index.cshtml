@@ -7,12 +7,18 @@
     <link rel="stylesheet" href="~/css/chat.css" />
 }
 
-<div class="chat-topbar">
-    <span>Привет, @User.Identity!.Name!</span>
-    <form asp-controller="Account" asp-action="Logout" method="post" style="display: inline;">
-        <button type="submit" class="btn-logout">Выйти</button>
-    </form>
-</div>
+<header class="app-header">
+    <div class="app-header-left">
+        <span class="app-logo">⚡ SCAM MESSENGER</span>
+    </div>
+    <div class="app-header-right">
+        <span id="connectionStatusDot" class="connection-dot"></span>
+        <span class="app-username">@User.Identity!.Name</span>
+        <form asp-controller="Account" asp-action="Logout" method="post" class="logout-form">
+            <button type="submit" class="btn-logout">Выйти</button>
+        </form>
+    </div>
+</header>
 
 <div class="chat-container">
     <!-- Боковая панель: онлайн-пользователи -->
@@ -26,9 +32,8 @@
     <!-- Основная область чата -->
     <main class="chat-area">
         <header class="chat-header">
-            <span id="connectionStatusDot" class="connection-dot"></span>
             <h3 id="chatTitle">Общий чат</h3>
-            <button id="backToPublicChat" class="btn btn-sm" style="display:none;">
+            <button id="backToPublicChat" style="display:none;">
                 ← Вернуться в общий чат
             </button>
             <span id="typingIndicator" class="typing-indicator"></span>
