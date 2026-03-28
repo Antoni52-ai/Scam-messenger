@@ -26,6 +26,8 @@ async function initializeSignalR() {
         await connection.start();
         console.log('SignalR connected');
         showStatus('Подключено', 'success');
+        const dot = document.getElementById('connectionStatusDot');
+        if (dot) dot.className = 'connection-dot connected';
 
         await connection.invoke('GetUserList');
         console.log('User list requested');
@@ -33,6 +35,8 @@ async function initializeSignalR() {
     } catch (err) {
         console.error('SignalR connection failed:', err);
         showStatus('Ошибка подключения', 'error');
+        const errDot = document.getElementById('connectionStatusDot');
+        if (errDot) errDot.className = 'connection-dot disconnected';
         setTimeout(initializeSignalR, 5000);
     }
 }
@@ -227,7 +231,7 @@ function buildMessageElement(msg) {
     const isOwn = msg.sender === (window.chatConfig?.currentUserName || '') ||
                   msg.senderName === (window.chatConfig?.currentUserName || '');
     const div = document.createElement('div');
-    div.className = `message ${isOwn ? 'message-own' : 'message-other'}`;
+    div.className = `message message-appear ${isOwn ? 'message-own' : 'message-other'}`;
     div.dataset.messageId = msg.id;
 
     const header = document.createElement('div');
@@ -310,14 +314,17 @@ function showStatus(text, type) {
     if (!statusEl) {
         statusEl = document.createElement('div');
         statusEl.id = 'connectionStatus';
-        statusEl.style.cssText = 'position:fixed;top:10px;right:10px;padding:8px 16px;border-radius:4px;z-index:1000;font-size:14px;';
+        statusEl.style.cssText = 'position:fixed;top:10px;right:10px;padding:8px 16px;border-radius:4px;z-index:1000;font-size:14px;font-family:Share Tech Mono,monospace;border:1px solid;';
         document.body.appendChild(statusEl);
     }
 
     statusEl.textContent = text;
-    statusEl.style.backgroundColor = type === 'success' ? '#4caf50' :
-        type === 'error' ? '#f44336' : '#2196f3';
-    statusEl.style.color = 'white';
+    statusEl.style.backgroundColor = type === 'success' ? 'rgba(0,255,136,0.15)' :
+        type === 'error' ? 'rgba(255,0,170,0.15)' : 'rgba(0,240,255,0.15)';
+    statusEl.style.color = type === 'success' ? '#00ff88' :
+        type === 'error' ? '#ff00aa' : '#00f0ff';
+    statusEl.style.borderColor = type === 'success' ? '#00ff88' :
+        type === 'error' ? '#ff00aa' : '#00f0ff';
 
     setTimeout(() => {
         statusEl.style.opacity = '0';
@@ -359,7 +366,7 @@ function addLoadMoreButton() {
     const btn = document.createElement('button');
     btn.id = 'loadMoreBtn';
     btn.textContent = '\u2B06 Загрузить ещё';
-    btn.style.cssText = 'display:block;width:100%;padding:8px;margin-bottom:8px;background:#f0f0f0;border:1px solid #ddd;border-radius:6px;cursor:pointer;font-size:13px;';
+    btn.style.cssText = 'display:block;width:100%;padding:8px;margin-bottom:8px;background:rgba(0,240,255,0.05);border:1px solid rgba(0,240,255,0.2);border-radius:4px;cursor:pointer;font-size:13px;color:#00f0ff;font-family:Share Tech Mono,monospace;';
     btn.onclick = loadMoreMessages;
     container.insertBefore(btn, container.firstChild);
 }
@@ -436,7 +443,7 @@ function startPrivateChat(userId, userName) {
     const chatTitle = document.getElementById('chatTitle');
     if (chatTitle) {
         chatTitle.textContent = 'Приватный чат с ' + userName;
-        chatTitle.style.color = '#007aff';
+        chatTitle.style.color = '#ff00aa';
     }
 
     const container = document.getElementById('messagesContainer');

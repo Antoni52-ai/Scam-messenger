@@ -1,28 +1,28 @@
-﻿@model Messenger.Controllers.LoginViewModel
+@model Messenger.Controllers.LoginViewModel
 @{
     ViewData["Title"] = "Вход";
 }
 
-<div style="max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-    <h2>Вход</h2>
-    
+<div class="auth-card">
+    <h2 class="auth-title">Вход</h2>
+
     <form asp-action="Login" method="post">
-        <div asp-validation-summary="All" style="color: red;"></div>
-        
-        <div style="margin-bottom: 15px;">
+        <div asp-validation-summary="All" class="auth-errors"></div>
+
+        <div class="auth-field">
             <label>Имя пользователя:</label>
-            <input asp-for="Username" class="form-control" style="width: 100%; padding: 8px;" />
+            <input asp-for="Username" />
         </div>
-        
-        <div style="margin-bottom: 15px;">
+
+        <div class="auth-field">
             <label>Пароль:</label>
-            <input asp-for="Password" type="password" class="form-control" style="width: 100%; padding: 8px;" />
+            <input asp-for="Password" type="password" />
         </div>
-        
-        <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">Войти</button>
+
+        <button type="submit" class="btn-neon">Войти</button>
     </form>
-    
-    <p style="margin-top: 15px;">
-        Нет аккаунта? <a asp-action="Register">Зарегистрироваться</a>
+
+    <p class="auth-footer">
+        Нет аккаунта? <a asp-action="Register" class="neon-link">Зарегистрироваться</a>
     </p>
 </div>

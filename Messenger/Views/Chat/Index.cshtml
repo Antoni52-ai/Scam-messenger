@@ -1,4 +1,4 @@
-﻿@model Messenger.Models.ViewModel.ChatViewModel
+@model Messenger.Models.ViewModel.ChatViewModel
 @{
     ViewData["Title"] = "Чат";
 }
@@ -7,23 +7,15 @@
     <link rel="stylesheet" href="~/css/chat.css" />
 }
 
-<header class="chat-header">
-    <h3 id="chatTitle">Общий чат</h3>
-    <button id="backToPublicChat" class="btn btn-sm" style="display:none;padding:5px 10px;font-size:12px;">
-        ← Вернуться в общий чат
-    </button>
-    <span id="typingIndicator" class="typing-indicator"></span>
-</header>
-
-<div style="padding: 10px; background: #f5f5f5; border-bottom: 1px solid #ddd;">
+<div class="chat-topbar">
     <span>Привет, @User.Identity!.Name!</span>
     <form asp-controller="Account" asp-action="Logout" method="post" style="display: inline;">
-        <button type="submit" class="btn btn-sm btn-danger">Выйти</button>
+        <button type="submit" class="btn-logout">Выйти</button>
     </form>
 </div>
 
 <div class="chat-container">
-    <!-- 🔹 Боковая панель: онлайн-пользователи -->
+    <!-- Боковая панель: онлайн-пользователи -->
     <aside class="sidebar">
         <h4>Онлайн (<span id="onlineCount">0</span>)</h4>
         <ul id="onlineUsers" class="user-list">
@@ -31,10 +23,14 @@
         </ul>
     </aside>
 
-    <!-- 🔹 Основная область чата -->
+    <!-- Основная область чата -->
     <main class="chat-area">
         <header class="chat-header">
+            <span id="connectionStatusDot" class="connection-dot"></span>
             <h3 id="chatTitle">Общий чат</h3>
+            <button id="backToPublicChat" class="btn btn-sm" style="display:none;">
+                ← Вернуться в общий чат
+            </button>
             <span id="typingIndicator" class="typing-indicator"></span>
         </header>
 
@@ -46,8 +42,8 @@
         </div>
 
         <div class="chat-input">
-            <textarea id="messageInput" 
-                      placeholder="Введите сообщение..." 
+            <textarea id="messageInput"
+                      placeholder="Введите сообщение..."
                       rows="2"
                       maxlength="2000"></textarea>
             <button id="sendBtn" class="btn-send">➤</button>

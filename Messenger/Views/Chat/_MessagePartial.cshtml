@@ -1,10 +1,10 @@
-﻿@model Messenger.Models.Entity.ChatMessage
+@model Messenger.Models.Entity.ChatMessage
 @using Messenger.Models.Entity
 @{
     var isOwn = Model.Sender == Model.TargetUserId; // или сравни с текущим пользователем
 }
 
-<div class="message @(isOwn ? "message-own" : "message-other")">
+<div class="message message-appear @(isOwn ? "message-own" : "message-other")">
     <div class="message-header">
         <strong>@Model.Sender</strong>
         <small>@Model.Timestamp.ToString("HH:mm")</small>
