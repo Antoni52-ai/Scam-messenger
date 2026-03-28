@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function initializeSignalR() {
     connection = new signalR.HubConnectionBuilder()
         .withUrl('/hub/chat', {
-            withCredentials: false
+            withCredentials: true
         })
         .withAutomaticReconnect([0, 2000, 5000, 10000])
         .configureLogging(signalR.LogLevel.Warning)

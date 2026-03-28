@@ -14,6 +14,7 @@ namespace Messenger.Services
         public async Task<List<ChatMessage>> GetLastMessagesAsync(int count)
         {
             return await _db.Messages
+                .Where(m => m.TargetUserId == null)
                 .OrderByDescending(m => m.Timestamp)
                 .Take(count)
                 .OrderBy(m => m.Timestamp)

@@ -34,11 +34,14 @@ builder.Services.AddScoped<IMessageService, MessageService>();
 // 🔹 CORS
 builder.Services.AddCors(options =>
 {
+    var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
+        ?? new[] { "https://localhost:5001", "http://localhost:5000" };
+
     options.AddPolicy("AllowAll", policy =>
         policy.AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials()
-              .SetIsOriginAllowed(_ => true));
+              .WithOrigins(allowedOrigins));
 });
 
 var app = builder.Build();

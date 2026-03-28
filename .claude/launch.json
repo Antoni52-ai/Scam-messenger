@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Messenger (HTTP)",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "Messenger", "--launch-profile", "http"],
+      "port": 5105
+    },
+    {
+      "name": "Messenger (HTTPS)",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "Messenger", "--launch-profile", "https"],
+      "port": 7246
+    }
+  ]
+}

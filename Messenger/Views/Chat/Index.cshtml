@@ -57,8 +57,8 @@
     <script>
         // Инициализация с данными из Razor
         window.chatConfig = {
-            currentUserName: '@Model.CurrentUser',
-            targetUserId: '@ViewBag.TargetUserId'
+            currentUserName: @Html.Raw(Json.Serialize(Model.CurrentUser)),
+            targetUserId: @Html.Raw(Json.Serialize(ViewBag.TargetUserId ?? ""))
         };
     </script>
 }
