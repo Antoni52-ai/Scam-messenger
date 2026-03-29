@@ -4,7 +4,7 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/chat.css" />
+    <link rel="stylesheet" href="~/css/chat.css" asp-append-version="true" />
 }
 
 <section class="chat-shell">
@@ -56,7 +56,7 @@
 </section>
 
 @section Scripts {
-    <script src="~/js/chat.js"></script>
+    <script src="~/js/chat.js" asp-append-version="true"></script>
     <script>
         window.chatConfig = {
             currentUserName: @Html.Raw(Json.Serialize(Model.CurrentUser)),
