@@ -535,6 +535,10 @@
   padding: 20px;
 }
 
+.modal-backdrop[hidden] {
+  display: none;
+}
+
 .modal-card {
   width: min(460px, 100%);
   border: 1px solid var(--border);
