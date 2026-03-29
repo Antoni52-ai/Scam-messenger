@@ -7,60 +7,57 @@
     <link rel="stylesheet" href="~/css/chat.css" />
 }
 
-<header class="app-header">
-    <div class="app-header-left">
-        <span class="app-logo">⚡ SCAM MESSENGER</span>
-    </div>
-    <div class="app-header-right">
-        <span id="connectionStatusDot" class="connection-dot"></span>
-        <span class="app-username">@User.Identity!.Name</span>
-        <form asp-controller="Account" asp-action="Logout" method="post" class="logout-form">
-            <button type="submit" class="btn-logout">Выйти</button>
-        </form>
-    </div>
-</header>
-
-<div class="chat-container">
-    <!-- Боковая панель: онлайн-пользователи -->
-    <aside class="sidebar">
-        <h4>Онлайн (<span id="onlineCount">0</span>)</h4>
-        <ul id="onlineUsers" class="user-list">
-            @* Заполняется через SignalR *@
-        </ul>
-    </aside>
-
-    <!-- Основная область чата -->
-    <main class="chat-area">
-        <header class="chat-header">
-            <h3 id="chatTitle">Общий чат</h3>
-            <button id="backToPublicChat" style="display:none;">
-                ← Вернуться в общий чат
-            </button>
-            <span id="typingIndicator" class="typing-indicator"></span>
-        </header>
-
-        <div id="messagesContainer" class="messages-container">
-            @foreach (var msg in Model.RecentMessages)
-            {
-                <partial name="_MessagePartial" model="msg" />
-            }
+<section class="chat-shell">
+    <header class="app-header">
+        <div class="app-header-left">
+            <span class="app-logo">NOVA MESSENGER</span>
+            <span class="app-subtitle">Защищенный канал общения команды</span>
         </div>
-
-        <div class="chat-input">
-            <textarea id="messageInput"
-                      placeholder="Введите сообщение..."
-                      rows="2"
-                      maxlength="2000"></textarea>
-            <button id="sendBtn" class="btn-send">➤</button>
+        <div class="app-header-right">
+            <span id="connectionStatusDot" class="connection-dot" title="Статус соединения"></span>
+            <span class="app-username">@User.Identity!.Name</span>
+            <form asp-controller="Account" asp-action="Logout" method="post" class="logout-form">
+                <button type="submit" class="btn-logout">Выйти</button>
+            </form>
         </div>
-    </main>
-</div>
+    </header>
+
+    <div class="chat-container">
+        <aside class="sidebar">
+            <div class="sidebar-head">
+                <h4>Онлайн (<span id="onlineCount">0</span>)</h4>
+            </div>
+            <ul id="onlineUsers" class="user-list"></ul>
+        </aside>
+
+        <main class="chat-area">
+            <header class="chat-header">
+                <h3 id="chatTitle">Общий чат</h3>
+                <button id="backToPublicChat" style="display:none;">Вернуться в общий чат</button>
+                <span id="typingIndicator" class="typing-indicator"></span>
+            </header>
+
+            <div id="messagesContainer" class="messages-container">
+                @foreach (var msg in Model.RecentMessages)
+                {
+                    <partial name="_MessagePartial" model="msg" />
+                }
+            </div>
+
+            <div class="chat-input">
+                <textarea id="messageInput"
+                          placeholder="Введите сообщение..."
+                          rows="2"
+                          maxlength="2000"></textarea>
+                <button id="sendBtn" class="btn-send" aria-label="Отправить">➤</button>
+            </div>
+        </main>
+    </div>
+</section>
 
 @section Scripts {
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="~/js/chat.js"></script>
     <script>
-        // Инициализация с данными из Razor
         window.chatConfig = {
             currentUserName: @Html.Raw(Json.Serialize(Model.CurrentUser)),
             targetUserId: @Html.Raw(Json.Serialize(ViewBag.TargetUserId ?? ""))

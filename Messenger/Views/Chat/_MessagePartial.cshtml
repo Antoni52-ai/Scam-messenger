@@ -1,12 +1,15 @@
 @model Messenger.Models.Entity.ChatMessage
-@using Messenger.Models.Entity
+
 @{
-    var isOwn = Model.Sender == Model.TargetUserId; // или сравни с текущим пользователем
+    var currentUserName = User?.Identity?.Name ?? string.Empty;
+    var senderName = Model.SenderName ?? Model.Sender;
+    var isOwn = string.Equals(senderName, currentUserName, System.StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(Model.Sender, currentUserName, System.StringComparison.OrdinalIgnoreCase);
 }
 
-<div class="message message-appear @(isOwn ? "message-own" : "message-other")">
+<div class="message message-appear @(isOwn ? "message-own" : "message-other")" data-message-id="@Model.Id">
     <div class="message-header">
-        <strong>@Model.Sender</strong>
+        <strong>@senderName</strong>
         <small>@Model.Timestamp.ToString("HH:mm")</small>
     </div>
     <div class="message-content">@Model.Content</div>

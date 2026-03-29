@@ -3,21 +3,35 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Messenger</title>
+    <title>@ViewData["Title"] - NOVA MESSENGER</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/site.css" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-    <div class="crt-overlay" aria-hidden="true"></div>
-    <div class="container flicker-on-load">
-        <main role="main">
+    <div class="ambient-bg" aria-hidden="true"></div>
+
+    <div class="site-shell">
+        <header class="site-header">
+            <a asp-controller="Chat" asp-action="Index" class="brand-link" aria-label="NOVA MESSENGER">
+                <span class="brand-mark">N</span>
+                <span class="brand-text">NOVA MESSENGER</span>
+            </a>
+
+            <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Переключить тему">
+                <span class="theme-toggle-icon" aria-hidden="true">◐</span>
+                <span id="themeToggleText" class="theme-toggle-text">Тема</span>
+            </button>
+        </header>
+
+        <main class="page-root" role="main">
             @RenderBody()
         </main>
     </div>
 
+    <script src="~/js/site.js"></script>
     <script src="~/lib/signalr/dist/browser/signalr.min.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
