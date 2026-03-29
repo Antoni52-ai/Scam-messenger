@@ -8,17 +8,25 @@ namespace Messenger.Services
     public class MessageService : IMessageService
     {
         private readonly ApplicationDbContext _db;
+        private readonly IEncryptionService _encryption;
 
-        public MessageService(ApplicationDbContext db) => _db = db;
+        public MessageService(ApplicationDbContext db, IEncryptionService encryption)
+        {
+            _db = db;
+            _encryption = encryption;
+        }
 
         public async Task<List<ChatMessage>> GetLastMessagesAsync(int count)
         {
-            return await _db.Messages
+            var messages = await _db.Messages
                 .Where(m => m.TargetUserId == null)
                 .OrderByDescending(m => m.Timestamp)
                 .Take(count)
                 .OrderBy(m => m.Timestamp)
                 .ToListAsync();
+
+            DecryptAll(messages);
+            return messages;
         }
 
         public async Task<List<ChatMessage>> GetMessagesBeforeAsync(string? lastMessageId, int count)
@@ -30,18 +38,21 @@ namespace Messenger.Services
             if (pivot == null)
                 return await GetLastMessagesAsync(count);
 
-            return await _db.Messages
+            var messages = await _db.Messages
                 .Where(m => m.Timestamp < pivot.Timestamp)
                 .OrderByDescending(m => m.Timestamp)
                 .Take(count)
                 .OrderBy(m => m.Timestamp)
                 .ToListAsync();
+
+            DecryptAll(messages);
+            return messages;
         }
 
         public async Task<List<ChatMessage>> GetPrivateMessagesAsync(
             string userId, string otherUserId, int count = 30)
         {
-            return await _db.Messages
+            var messages = await _db.Messages
                 .Where(m => m.TargetUserId != null &&
                     ((m.Sender == userId && m.TargetUserId == otherUserId) ||
                      (m.Sender == otherUserId && m.TargetUserId == userId)))
@@ -49,12 +60,22 @@ namespace Messenger.Services
                 .Take(count)
                 .OrderBy(m => m.Timestamp)
                 .ToListAsync();
+
+            DecryptAll(messages);
+            return messages;
         }
 
         public async Task SaveMessageAsync(ChatMessage message)
         {
+            message.Content = _encryption.Encrypt(message.Content);
             _db.Messages.Add(message);
             await _db.SaveChangesAsync();
+        }
+
+        private void DecryptAll(List<ChatMessage> messages)
+        {
+            foreach (var m in messages)
+                m.Content = _encryption.Decrypt(m.Content);
         }
     }
 }
