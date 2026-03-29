@@ -31,6 +31,8 @@ builder.Services.AddSignalR();
 // 🔹 Services
 builder.Services.AddScoped<IMessageService, MessageService>();
 
+builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+
 // 🔹 CORS
 builder.Services.AddCors(options =>
 {
@@ -67,6 +69,7 @@ app.MapControllerRoute(
     pattern: "{controller=Chat}/{action=Index}/{id?}");
 
 app.MapHub<ChatHub>("/hub/chat");
+
 
 app.MapGet("/", () => Results.Redirect("/Chat"));
 

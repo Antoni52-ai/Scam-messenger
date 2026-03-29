@@ -1,50 +1,74 @@
-﻿// БЫЛО:
-// СТАЛО:
+﻿using Messenger.Data;
 using Messenger.Models.Entity;
 using Messenger.Services.Interfaces;
-using Messenger.Models.Entity;
+using Microsoft.EntityFrameworkCore;
 
-namespace Messenger.Services
+namespace Messenger.Services;
+
+public class MessageService : IMessageService
 {
-    public class MessageService : IMessageService
+    private readonly ApplicationDbContext _context;
+    private readonly IEncryptionService _encryption;
+
+    public MessageService(
+        ApplicationDbContext context,
+        IEncryptionService encryption)
     {
-        private static readonly List<ChatMessage> _messages = new();
+        _context = context;
+        _encryption = encryption;
+    }
 
-        public Task<List<ChatMessage>> GetLastMessagesAsync(int count)
+    public async Task<List<ChatMessage>> GetLastMessagesAsync(int count)
+    {
+        var messages = await _context.Messages
+            .OrderByDescending(m => m.Timestamp)
+            .Take(count)
+            .ToListAsync();
+
+        // 🔐 Расшифровываем при чтении
+        foreach (var msg in messages)
         {
-            var result = _messages
-                .OrderByDescending(m => m.Timestamp)
-                .Take(count)
-                .Reverse()
-                .ToList();
-            return Task.FromResult(result);
+            msg.Content = _encryption.Decrypt(msg.Content);
         }
 
-        public Task<List<ChatMessage>> GetMessagesBeforeAsync(string? lastMessageId, int count)
-        {
-            var query = _messages.AsQueryable();
+        return messages;
+    }
 
-            if (!string.IsNullOrEmpty(lastMessageId))
+    public async Task<List<ChatMessage>> GetMessagesBeforeAsync(string? lastMessageId, int count)
+    {
+        var query = _context.Messages.AsQueryable();
+
+        if (!string.IsNullOrEmpty(lastMessageId))
+        {
+            var lastMessage = await _context.Messages
+                .FirstOrDefaultAsync(m => m.Id == lastMessageId);
+
+            if (lastMessage != null)
             {
-                var foundMessage = _messages.FirstOrDefault(x => x.Id == lastMessageId);
-                if (foundMessage != null)
-                {
-                    query = query.Where(m => m.Timestamp < foundMessage.Timestamp);
-                }
+                query = query.Where(m => m.Timestamp < lastMessage.Timestamp);
             }
-
-            var result = query
-                .OrderByDescending(m => m.Timestamp)
-                .Take(count)
-                .ToList();
-
-            return Task.FromResult(result);
         }
 
-        public Task SaveMessageAsync(ChatMessage message)
+        var messages = await query
+            .OrderByDescending(m => m.Timestamp)
+            .Take(count)
+            .ToListAsync();
+
+        // 🔐 Расшифровываем при чтении
+        foreach (var msg in messages)
         {
-            _messages.Add(message);
-            return Task.CompletedTask;
+            msg.Content = _encryption.Decrypt(msg.Content);
         }
+
+        return messages;
+    }
+
+    public async Task SaveMessageAsync(ChatMessage message)
+    {
+        // 🔐 Шифруем перед сохранением!
+        message.Content = _encryption.Encrypt(message.Content);
+
+        _context.Messages.Add(message);
+        await _context.SaveChangesAsync();
     }
 }

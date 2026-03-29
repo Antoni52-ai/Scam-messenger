@@ -9,6 +9,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 {
     public DbSet<ChatMessage> Messages { get; set; }
     public DbSet<ChatRoom> Rooms { get; set; }
+    public DbSet<RoomMember> RoomMembers { get; set; }
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -19,13 +20,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         base.OnModelCreating(builder);
 
-        // Индексы для производительности
-        builder.Entity<ChatMessage>()
-            .HasIndex(m => new { m.Sender, m.Timestamp })
-            .HasDatabaseName("IX_Messages_Sender_Timestamp");
-
-        builder.Entity<ChatMessage>()
-            .HasIndex(m => m.TargetUserId)
-            .HasDatabaseName("IX_Messages_TargetUser");
+        // Конфигурация RoomMember (составной ключ)
+        builder.Entity<RoomMember>()
+            .HasKey(rm => new { rm.RoomId, rm.UserId });
     }
 }

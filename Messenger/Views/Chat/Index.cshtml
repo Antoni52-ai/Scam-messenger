@@ -3,66 +3,114 @@
     ViewData["Title"] = "Чат";
 }
 
-@section Styles {
-    <link rel="stylesheet" href="~/css/chat.css" />
-}
-
-<header class="chat-header">
-    <h3 id="chatTitle">Общий чат</h3>
-    <button id="backToPublicChat" class="btn btn-sm" style="display:none;padding:5px 10px;font-size:12px;">
-        ← Вернуться в общий чат
-    </button>
-    <span id="typingIndicator" class="typing-indicator"></span>
-</header>
-
-<div style="padding: 10px; background: #f5f5f5; border-bottom: 1px solid #ddd;">
-    <span>Привет, @User.Identity!.Name!</span>
+<!-- 🔝 Верхняя панель с выходом -->
+<div style="padding: 10px; background: #f5f5f5; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <span>Привет, @User.Identity!.Name!</span>
+    </div>
     <form asp-controller="Account" asp-action="Logout" method="post" style="display: inline;">
         <button type="submit" class="btn btn-sm btn-danger">Выйти</button>
     </form>
 </div>
 
-<div class="chat-container">
-    <!-- 🔹 Боковая панель: онлайн-пользователи -->
-    <aside class="sidebar">
-        <h4>Онлайн (<span id="onlineCount">0</span>)</h4>
-        <ul id="onlineUsers" class="user-list">
-            @* Заполняется через SignalR *@
-        </ul>
+<div class="chat-container" style="display: flex; height: calc(100vh - 50px);">
+    
+    <!-- 📱 ЛЕВАЯ ПАНЕЛЬ: Список комнат и онлайн -->
+    <aside class="sidebar" style="width: 300px; background: #f8f9fa; border-right: 1px solid #dee2e6; overflow-y: auto;">
+        
+        <!-- 🔘 Кнопки переключения -->
+        <div style="padding: 15px; border-bottom: 1px solid #dee2e6;">
+            <button id="showGeneralChat" class="btn btn-primary btn-sm" style="width: 100%; margin-bottom: 5px;">
+                💬 Общий чат
+            </button>
+            <button id="showRoomsBtn" class="btn btn-outline-primary btn-sm" style="width: 100%;">
+                👥 Групповые чаты
+            </button>
+        </div>
+
+        <!-- 📋 Секция: Групповые чаты (скрыта по умолчанию) -->
+        <div id="roomsSection" style="display: none; padding: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0; font-size: 16px;">Комнаты</h4>
+                <button id="createRoomBtn" class="btn btn-success btn-sm">+</button>
+            </div>
+            <ul id="roomsList" class="room-list" style="list-style: none; padding: 0; margin: 0;">
+                <!-- Сюда добавляются комнаты через JS -->
+            </ul>
+        </div>
+
+        <!-- 👥 Секция: Онлайн пользователи -->
+        <div id="onlineSection" style="padding: 15px;">
+            <h4 style="margin-bottom: 10px; font-size: 16px;">
+                Онлайн (<span id="onlineCount">0</span>)
+            </h4>
+            <ul id="onlineUsers" class="user-list" style="list-style: none; padding: 0; margin: 0;">
+                <!-- Сюда добавляются пользователи через JS -->
+            </ul>
+        </div>
     </aside>
 
-    <!-- 🔹 Основная область чата -->
-    <main class="chat-area">
-        <header class="chat-header">
-            <h3 id="chatTitle">Общий чат</h3>
-            <span id="typingIndicator" class="typing-indicator"></span>
+    <!-- 💬 ПРАВАЯ ЧАСТЬ: Область чата -->
+    <main class="chat-area" style="flex: 1; display: flex; flex-direction: column;">
+        
+        <!-- Заголовок чата -->
+        <header class="chat-header" style="padding: 15px; border-bottom: 1px solid #dee2e6; background: white;">
+            <h3 id="chatTitle" style="margin: 0; font-size: 18px;">💬 Общий чат</h3>
+            <button id="backToGeneralChat" class="btn btn-sm btn-secondary" style="display: none;">
+                ← Назад
+            </button>
+            <span id="typingIndicator" class="typing-indicator" style="margin-left: 10px; color: #6c757d; font-style: italic;"></span>
         </header>
 
-        <div id="messagesContainer" class="messages-container">
-            @foreach (var msg in Model.RecentMessages)
-            {
-                <partial name="_MessagePartial" model="msg" />
-            }
+        <!-- Сообщения -->
+        <div id="messagesContainer" class="messages-container" style="flex: 1; padding: 15px; overflow-y: auto; background: #f8f9fa;">
+            <p style="text-align: center; color: #6c757d;">Загрузка сообщений...</p>
         </div>
 
-        <div class="chat-input">
-            <textarea id="messageInput" 
-                      placeholder="Введите сообщение..." 
-                      rows="2"
+        <!-- Ввод сообщения -->
+        <div class="chat-input" style="padding: 15px; background: white; border-top: 1px solid #dee2e6;">
+            <textarea id="messageInput" placeholder="Введите сообщение..." rows="2"
+                      style="flex: 1; padding: 10px; border: 1px solid #dee2e6; border-radius: 8px; resize: none;"
                       maxlength="2000"></textarea>
-            <button id="sendBtn" class="btn-send">➤</button>
+            <button id="sendBtn" class="btn btn-primary" style="margin-left: 10px; padding: 0 20px;">
+                ➤ Отправить
+            </button>
         </div>
     </main>
+</div>
+
+<!-- 🪟 Модальное окно создания комнаты -->
+<div id="createRoomModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 30px; border-radius: 8px; min-width: 400px;">
+        <h3 style="margin-top: 0;">Создать групповой чат</h3>
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px;">Название комнаты *</label>
+            <input type="text" id="roomNameInput" class="form-control" placeholder="Например: Работа"
+                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 5px;">Описание</label>
+            <textarea id="roomDescInput" placeholder="Описание комнаты..." rows="3"
+                      style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button id="cancelCreateRoom" class="btn btn-secondary">Отмена</button>
+            <button id="confirmCreateRoom" class="btn btn-success">Создать</button>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <script src="~/js/chat.js"></script>
     <script>
-        // Инициализация с данными из Razor
         window.chatConfig = {
-            currentUserName: '@Model.CurrentUser',
-            targetUserId: '@ViewBag.TargetUserId'
+        currentUserName: '@User.Identity?.Name',
+        targetUserId: null,
+        targetUserName: null,
+        currentRoomId: null,  // 🔥 Для групповых чатов
+        chatType: 'general'   // 🔥 'general', 'private', или 'room'
         };
     </script>
 }

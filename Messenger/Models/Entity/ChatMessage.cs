@@ -11,5 +11,9 @@
         public bool IsEdited { get; set; }
         public DateTime? EditedAt { get; set; }
         public bool IsDeleted { get; set; }
+        public string? RoomId { get; set; }
+        public ChatRoom? Room { get; set; }
+        public bool IsPrivate { get; set; } = false;
+
     }
 }

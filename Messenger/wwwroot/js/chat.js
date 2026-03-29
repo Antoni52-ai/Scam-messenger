@@ -79,6 +79,7 @@ function registerSignalRHandlers() {
 }
 
 // 🔹 Отправка сообщения
+// 🔥 Отправка сообщения
 async function sendMessage() {
     const input = document.getElementById('messageInput');
     const content = input.value.trim();
@@ -86,12 +87,14 @@ async function sendMessage() {
     if (!content || !connection) return;
 
     try {
-        if (window.chatConfig.targetUserId) {
+        if (window.chatConfig.chatType === 'room' && window.chatConfig.currentRoomId) {
+            // Сообщение в комнату
+            await connection.invoke('SendRoomMessage', window.chatConfig.currentRoomId, content);
+        } else if (window.chatConfig.chatType === 'private' && window.chatConfig.targetUserId) {
             // Приватное сообщение
             await connection.invoke('SendPrivateMessage', window.chatConfig.targetUserId, content);
-            console.log(`Sent private message to ${window.chatConfig.targetUserName}`);
         } else {
-            // Общее сообщение
+            // Общий чат
             await connection.invoke('SendMessage', content);
         }
 
@@ -445,4 +448,54 @@ function returnToPublicChat() {
     }
 
     console.log('Returned to public chat');
+}
+
+// Создание комнаты
+document.getElementById('createRoomBtn')?.addEventListener('click', () => {
+    document.getElementById('createRoomModal').style.display = 'block';
+});
+
+document.getElementById('confirmCreateRoom')?.addEventListener('click', async () => {
+    const name = document.getElementById('roomNameInput').value;
+    const desc = document.getElementById('roomDescInput').value;
+
+    if (connection) {
+        await connection.invoke('CreateRoom', name, desc);
+        document.getElementById('createRoomModal').style.display = 'none';
+    }
+});
+
+// Обработка созданной комнаты
+connection.on('RoomCreated', (room) => {
+    addRoomToList(room);
+    joinRoom(room.id);
+});
+
+// Присоединение к комнате
+function joinRoom(roomId) {
+    connection.invoke('JoinRoom', roomId);
+    loadRoomMessages(roomId);
+}
+
+// Загрузка сообщений комнаты
+async function loadRoomMessages(roomId) {
+    const response = await fetch(`/Chat/GetRoomMessages?roomId=${roomId}`);
+    const messages = await response.json();
+
+    const container = document.getElementById('messagesContainer');
+    container.innerHTML = '';
+    messages.forEach(msg => appendMessage(msg));
+}
+
+// Добавление комнаты в список
+function addRoomToList(room) {
+    const list = document.getElementById('roomsList');
+    const li = document.createElement('li');
+    li.className = 'room-item';
+    li.innerHTML = `
+        <span>${room.name}</span>
+        <small>${room.memberCount} участников</small>
+    `;
+    li.onclick = () => joinRoom(room.id);
+    list.appendChild(li);
 }
