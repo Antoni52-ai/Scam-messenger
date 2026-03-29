@@ -24,10 +24,20 @@
 
     <div class="chat-container">
         <aside class="sidebar">
-            <div class="sidebar-head">
-                <h4>Онлайн (<span id="onlineCount">0</span>)</h4>
+            <div class="sidebar-section">
+                <div class="sidebar-head sidebar-head-split">
+                    <h4>Комнаты (<span id="roomCount">0</span>)</h4>
+                    <button id="openCreateRoomBtn" type="button" class="btn-create-room">Создать</button>
+                </div>
+                <ul id="roomList" class="room-list"></ul>
             </div>
-            <ul id="onlineUsers" class="user-list"></ul>
+
+            <div class="sidebar-section sidebar-section-users">
+                <div class="sidebar-head">
+                    <h4>Онлайн (<span id="onlineCount">0</span>)</h4>
+                </div>
+                <ul id="onlineUsers" class="user-list"></ul>
+            </div>
         </aside>
 
         <main class="chat-area">
@@ -53,6 +63,27 @@
             </div>
         </main>
     </div>
+
+    <div id="createRoomModal" class="modal-backdrop" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="createRoomTitle">
+            <div class="modal-head">
+                <h4 id="createRoomTitle">Создать комнату</h4>
+                <button type="button" id="closeCreateRoomModal" class="btn-modal-close" aria-label="Закрыть">×</button>
+            </div>
+
+            <form id="createRoomForm" class="modal-form">
+                <label for="roomNameInput">Название</label>
+                <input id="roomNameInput" name="roomName" type="text" maxlength="80" required />
+
+                <label for="roomDescriptionInput">Описание</label>
+                <textarea id="roomDescriptionInput" name="roomDescription" rows="3" maxlength="300"></textarea>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn-send">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </section>
 
 @section Scripts {
@@ -60,7 +91,10 @@
     <script>
         window.chatConfig = {
             currentUserName: @Html.Raw(Json.Serialize(Model.CurrentUser)),
-            targetUserId: @Html.Raw(Json.Serialize(ViewBag.TargetUserId ?? ""))
+            currentUserId: @Html.Raw(Json.Serialize(Model.CurrentUserId)),
+            targetUserId: @Html.Raw(Json.Serialize(ViewBag.TargetUserId)),
+            targetUserName: null,
+            activeRoomId: null
         };
     </script>
 }

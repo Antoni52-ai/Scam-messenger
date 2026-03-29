@@ -7,6 +7,9 @@
         public string SenderName { get; set; } = string.Empty;
         public string? TargetUserId { get; set; }
         public string? RoomName { get; set; }
+        public string? RoomId { get; set; }
+        public ChatRoom? Room { get; set; }
+        public bool IsPrivate { get; set; }
         public string Content { get; set; } = string.Empty;
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
         public bool IsEdited { get; set; }

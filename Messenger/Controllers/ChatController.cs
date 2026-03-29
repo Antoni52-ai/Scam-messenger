@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Messenger.Models.ViewModel;
 using Messenger.Services.Interfaces;
+using System.Security.Claims;
 
 namespace Messenger.Controllers;
 
@@ -20,6 +21,7 @@ public class ChatController : Controller
         var viewModel = new ChatViewModel
         {
             CurrentUser = User.Identity?.Name,
+            CurrentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
             RecentMessages = await _messageService.GetLastMessagesAsync(50),
             OnlineCount = 0
         };
