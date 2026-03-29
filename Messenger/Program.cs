@@ -46,6 +46,22 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// 🔹 Auto-migrate database on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        db.Database.Migrate();
+        logger.LogInformation("Database migrated successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to migrate database. Is PostgreSQL running?");
+    }
+}
+
 // 🔹 Pipeline
 if (app.Environment.IsDevelopment())
 {

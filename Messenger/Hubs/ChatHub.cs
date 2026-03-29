@@ -81,7 +81,14 @@ public class ChatHub : Hub
             Timestamp = message.Timestamp
         };
 
-        await _messageService.SaveMessageAsync(chatMessage);
+        try
+        {
+            await _messageService.SaveMessageAsync(chatMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save public message to database");
+        }
 
         await Clients.All.SendAsync("NewMessage", message);
     }
@@ -112,7 +119,14 @@ public class ChatHub : Hub
             Timestamp = message.Timestamp
         };
 
-        await _messageService.SaveMessageAsync(chatMessage);
+        try
+        {
+            await _messageService.SaveMessageAsync(chatMessage);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save private message to database");
+        }
 
         await Clients.Users(new[] { sender.UserId, targetUserId })
                     .SendAsync("NewMessage", message);
@@ -151,20 +165,41 @@ public class ChatHub : Hub
         await Clients.Group(roomName).SendAsync("SystemMessage",
             new { text = $"{sender} присоединился к комнате", timestamp = DateTime.UtcNow });
 
-        var history = await _messageService.GetLastMessagesAsync(30);
-        await Clients.Caller.SendAsync("MessageHistory", history);
+        try
+        {
+            var history = await _messageService.GetLastMessagesAsync(30);
+            await Clients.Caller.SendAsync("MessageHistory", history);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load message history");
+        }
     }
 
     public async Task GetMoreMessages(string lastMessageId)
     {
-        var messages = await _messageService.GetMessagesBeforeAsync(lastMessageId, 30);
-        await Clients.Caller.SendAsync("OlderMessages", messages);
+        try
+        {
+            var messages = await _messageService.GetMessagesBeforeAsync(lastMessageId, 30);
+            await Clients.Caller.SendAsync("OlderMessages", messages);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load older messages");
+        }
     }
 
     public async Task GetPublicHistory()
     {
-        var messages = await _messageService.GetLastMessagesAsync(30);
-        await Clients.Caller.SendAsync("MessageHistory", messages);
+        try
+        {
+            var messages = await _messageService.GetLastMessagesAsync(30);
+            await Clients.Caller.SendAsync("MessageHistory", messages);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load public history");
+        }
     }
 
     private string Sanitize(string input) =>
