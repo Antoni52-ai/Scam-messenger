@@ -1,21 +1,20 @@
-// Глобальные переменные
 let connection;
 let typingTimer;
 const TYPING_DELAY = 1000;
 
-// Инициализация при загрузке
+function getCurrentUserName() {
+    return window.chatConfig?.currentUserName || '';
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     await initializeSignalR();
     setupEventListeners();
     scrollToBottom();
 });
 
-// Подключение к SignalR
 async function initializeSignalR() {
     connection = new signalR.HubConnectionBuilder()
-        .withUrl('/hub/chat', {
-            withCredentials: true
-        })
+        .withUrl('/hub/chat', { withCredentials: true })
         .withAutomaticReconnect([0, 2000, 5000, 10000])
         .configureLogging(signalR.LogLevel.Warning)
         .build();
@@ -24,146 +23,163 @@ async function initializeSignalR() {
 
     try {
         await connection.start();
-        console.log('SignalR connected');
         showStatus('Подключено', 'success');
-        const dot = document.getElementById('connectionStatusDot');
-        if (dot) dot.className = 'connection-dot connected';
 
-        // Join room to get message history + trigger user list
+        const dot = document.getElementById('connectionStatusDot');
+        if (dot) {
+            dot.className = 'connection-dot connected';
+        }
+
         await connection.invoke('JoinRoom', 'general');
         await connection.invoke('GetUserList');
-        console.log('Joined room and requested user list');
-
-    } catch (err) {
-        console.error('SignalR connection failed:', err);
+    } catch (error) {
+        console.error('SignalR connection failed:', error);
         showStatus('Ошибка подключения', 'error');
-        const errDot = document.getElementById('connectionStatusDot');
-        if (errDot) errDot.className = 'connection-dot disconnected';
+
+        const dot = document.getElementById('connectionStatusDot');
+        if (dot) {
+            dot.className = 'connection-dot disconnected';
+        }
+
         setTimeout(initializeSignalR, 5000);
     }
 }
 
 function registerSignalRHandlers() {
+    connection.on('UserList', updateUserList);
+    connection.on('OnlineUsersUpdated', updateUserList);
 
-    // Обработка списка пользователей
-    connection.on('UserList', (users) => {
-        updateUserList(users);
-    });
-
-    // Новое сообщение
     connection.on('NewMessage', (message) => {
         appendMessage(message);
         scrollToBottom();
     });
 
-    // Пользователь подключился
     connection.on('UserJoined', (user) => {
         addOnlineUser(user.userId, user.userName);
-        showSystemMessage(`${user.userName} присоединился`);
+        showSystemMessage(`${user.userName} присоединился к чату`);
     });
 
-    // Пользователь отключился
     connection.on('UserLeft', (user) => {
         removeOnlineUser(user.userName);
         showSystemMessage(`${user.userName} покинул чат`);
     });
 
-    // Кто-то печатает
     connection.on('UserTyping', (userName) => {
         showTypingIndicator(userName);
     });
 
-    // Обновление списка онлайн
-    connection.on('OnlineUsersUpdated', (users) => {
-        updateUserList(users);
-    });
-
-    // Системные сообщения
     connection.on('SystemMessage', (data) => {
         showSystemMessage(data.text);
     });
 
-    // История сообщений при входе
     connection.on('MessageHistory', (messages) => {
         const container = document.getElementById('messagesContainer');
-        if (!container) return;
+        if (!container) {
+            return;
+        }
+
         const fragment = document.createDocumentFragment();
-        messages.forEach(msg => {
-            const el = buildMessageElement(msg);
-            fragment.appendChild(el);
+        messages.forEach((msg) => {
+            fragment.appendChild(buildMessageElement(msg));
         });
-        container.insertBefore(fragment, container.firstChild);
+
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        if (loadMoreBtn) {
+            container.insertBefore(fragment, loadMoreBtn.nextSibling);
+        } else {
+            container.insertBefore(fragment, container.firstChild);
+        }
+
         scrollToBottom();
     });
 
-    // Подгрузка старых сообщений
     connection.on('OlderMessages', (messages) => {
         const container = document.getElementById('messagesContainer');
-        if (!container) return;
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
-        if (messages.length === 0) {
-            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+        if (!container) {
             return;
         }
+
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+        if (messages.length === 0) {
+            if (loadMoreBtn) {
+                loadMoreBtn.style.display = 'none';
+            }
+            return;
+        }
+
         const fragment = document.createDocumentFragment();
-        messages.forEach(msg => fragment.appendChild(buildMessageElement(msg)));
+        messages.forEach((msg) => {
+            fragment.appendChild(buildMessageElement(msg));
+        });
+
         const oldHeight = container.scrollHeight;
         container.insertBefore(fragment, loadMoreBtn ? loadMoreBtn.nextSibling : container.firstChild);
         container.scrollTop = container.scrollHeight - oldHeight;
-        if (loadMoreBtn) loadMoreBtn.disabled = false;
+
+        if (loadMoreBtn) {
+            loadMoreBtn.disabled = false;
+        }
     });
 }
 
-// Отправка сообщения
 async function sendMessage() {
     const input = document.getElementById('messageInput');
-    const content = input.value.trim();
+    if (!input || !connection) {
+        return;
+    }
 
-    if (!content || !connection) return;
+    const content = input.value.trim();
+    if (!content) {
+        return;
+    }
 
     try {
         if (window.chatConfig.targetUserId) {
             await connection.invoke('SendPrivateMessage', window.chatConfig.targetUserId, content);
-            console.log(`Sent private message to ${window.chatConfig.targetUserName}`);
         } else {
             await connection.invoke('SendMessage', content);
         }
 
         input.value = '';
         hideTypingIndicator();
-    } catch (err) {
-        console.error('Failed to send:', err);
-        showStatus('Не удалось отправить', 'error');
+    } catch (error) {
+        console.error('Failed to send message:', error);
+        showStatus('Не удалось отправить сообщение', 'error');
     }
 }
 
-
-// Индикатор набора
 function handleTyping() {
-    if (!connection) return;
+    if (!connection) {
+        return;
+    }
 
     connection.invoke('SendTyping', null);
 
     clearTimeout(typingTimer);
     typingTimer = setTimeout(() => {
-        // Перестали печатать
+        // Typing timeout is intentionally passive on the client.
     }, TYPING_DELAY);
 }
 
-// Helper: get initials from username
 function getInitials(name) {
-    if (!name) return '?';
+    if (!name) {
+        return '?';
+    }
+
     const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+
     return name.substring(0, 2).toUpperCase();
 }
 
-// Helper: clear all children from an element (safe alternative to innerHTML = '')
 function clearChildren(el) {
-    while (el.firstChild) el.removeChild(el.firstChild);
+    while (el.firstChild) {
+        el.removeChild(el.firstChild);
+    }
 }
 
-// Helper: build a user list item with avatar
 function buildUserItem(userId, userName) {
     const li = document.createElement('li');
     li.className = 'user-item';
@@ -173,7 +189,7 @@ function buildUserItem(userId, userName) {
     avatar.textContent = getInitials(userName);
 
     const dot = document.createElement('span');
-    dot.className = 'user-status online';
+    dot.className = 'user-status';
 
     const nameSpan = document.createElement('span');
     nameSpan.className = 'user-name';
@@ -190,53 +206,53 @@ function buildUserItem(userId, userName) {
     return li;
 }
 
-// Обновление списка пользователей онлайн
 function updateUserList(users) {
     const onlineList = document.getElementById('onlineUsers');
     const onlineCount = document.getElementById('onlineCount');
 
-    if (!onlineList || !onlineCount) return;
+    if (!onlineList || !onlineCount) {
+        return;
+    }
 
     clearChildren(onlineList);
 
-    const currentUserName = window.chatConfig?.currentUserName;
-    const otherUsers = (users || []).filter(u => u.userName !== currentUserName);
+    const currentUserName = getCurrentUserName();
+    const otherUsers = (users || []).filter((u) => u.userName !== currentUserName);
 
-    otherUsers.forEach(user => {
+    otherUsers.forEach((user) => {
         onlineList.appendChild(buildUserItem(user.userId, user.userName));
     });
 
-    onlineCount.textContent = otherUsers.length;
+    onlineCount.textContent = String(otherUsers.length);
 }
 
-// Добавить пользователя в список онлайн
 function addOnlineUser(userId, userName) {
     const onlineList = document.getElementById('onlineUsers');
-    if (!onlineList) return;
+    if (!onlineList || userName === getCurrentUserName()) {
+        return;
+    }
 
-    // Skip self
-    if (userName === window.chatConfig?.currentUserName) return;
-
-    const existing = Array.from(onlineList.querySelectorAll('.user-name'))
-        .some(el => el.textContent === userName);
+    const existing = Array.from(onlineList.querySelectorAll('.user-name')).some((el) => el.textContent === userName);
 
     if (!existing) {
         onlineList.appendChild(buildUserItem(userId, userName));
 
         const count = document.getElementById('onlineCount');
         if (count) {
-            count.textContent = parseInt(count.textContent) + 1;
+            const current = Number.parseInt(count.textContent || '0', 10) || 0;
+            count.textContent = String(current + 1);
         }
     }
 }
 
-// Удалить пользователя из списка онлайн
 function removeOnlineUser(userName) {
     const onlineList = document.getElementById('onlineUsers');
-    if (!onlineList) return;
+    if (!onlineList) {
+        return;
+    }
 
     const items = onlineList.querySelectorAll('.user-item');
-    items.forEach(item => {
+    items.forEach((item) => {
         const nameEl = item.querySelector('.user-name');
         if (nameEl && nameEl.textContent === userName) {
             item.remove();
@@ -245,15 +261,16 @@ function removeOnlineUser(userName) {
 
     const count = document.getElementById('onlineCount');
     if (count) {
-        const current = parseInt(count.textContent) || 0;
-        count.textContent = Math.max(0, current - 1);
+        const current = Number.parseInt(count.textContent || '0', 10) || 0;
+        count.textContent = String(Math.max(0, current - 1));
     }
 }
 
-// Построение DOM-элемента сообщения
 function buildMessageElement(msg) {
-    const isOwn = msg.sender === (window.chatConfig?.currentUserName || '') ||
-                  msg.senderName === (window.chatConfig?.currentUserName || '');
+    const currentUserName = getCurrentUserName();
+    const sender = msg.senderName || msg.sender || 'Пользователь';
+    const isOwn = sender === currentUserName || msg.sender === currentUserName;
+
     const div = document.createElement('div');
     div.className = `message message-appear ${isOwn ? 'message-own' : 'message-other'}`;
     div.dataset.messageId = msg.id;
@@ -261,14 +278,14 @@ function buildMessageElement(msg) {
     const header = document.createElement('div');
     header.className = 'message-header';
 
-    const strong = document.createElement('strong');
-    strong.textContent = msg.senderName || msg.sender;
+    const author = document.createElement('strong');
+    author.textContent = sender;
 
-    const small = document.createElement('small');
-    small.textContent = formatTime(msg.timestamp || msg.sentAt);
+    const time = document.createElement('small');
+    time.textContent = formatTime(msg.timestamp || msg.sentAt);
 
-    header.appendChild(strong);
-    header.appendChild(small);
+    header.appendChild(author);
+    header.appendChild(time);
 
     const content = document.createElement('div');
     content.className = 'message-content';
@@ -276,88 +293,100 @@ function buildMessageElement(msg) {
 
     div.appendChild(header);
     div.appendChild(content);
+
     return div;
 }
 
-// Показать сообщение в чате
 function appendMessage(msg) {
     const container = document.getElementById('messagesContainer');
-    if (!container) return;
-    // Deduplication check
-    if (msg.id && container.querySelector(`[data-message-id="${msg.id}"]`)) return;
+    if (!container) {
+        return;
+    }
+
+    if (msg.id && container.querySelector(`[data-message-id="${msg.id}"]`)) {
+        return;
+    }
+
     container.appendChild(buildMessageElement(msg));
 }
 
-// Загрузить старые сообщения
 function loadMoreMessages() {
     const container = document.getElementById('messagesContainer');
-    if (!container) return;
+    if (!container || !connection) {
+        return;
+    }
+
     const messages = container.querySelectorAll('[data-message-id]');
-    if (messages.length === 0) return;
+    if (messages.length === 0) {
+        return;
+    }
+
     const oldestId = messages[0].dataset.messageId;
     const btn = document.getElementById('loadMoreBtn');
-    if (btn) btn.disabled = true;
+    if (btn) {
+        btn.disabled = true;
+    }
+
     connection.invoke('GetMoreMessages', oldestId).catch(console.error);
 }
 
-// Показать системное сообщение
 function showSystemMessage(text) {
     const container = document.getElementById('messagesContainer');
-    if (!container) return;
+    if (!container) {
+        return;
+    }
 
     const div = document.createElement('div');
     div.className = 'system-message';
-    div.textContent = '\u2022 ' + text;
+    div.textContent = `• ${text}`;
+
     container.appendChild(div);
     scrollToBottom();
 }
 
-// Показать индикатор набора
 function showTypingIndicator(userName) {
-    const el = document.getElementById('typingIndicator');
-    if (el) {
-        el.textContent = `${userName} печатает...`;
-        el.style.opacity = '1';
-        setTimeout(() => {
-            el.style.opacity = '0';
-        }, 2000);
+    const indicator = document.getElementById('typingIndicator');
+    if (!indicator) {
+        return;
     }
+
+    indicator.textContent = `${userName} печатает...`;
+    indicator.style.opacity = '1';
+
+    setTimeout(() => {
+        indicator.style.opacity = '0';
+    }, 2000);
 }
 
 function hideTypingIndicator() {
-    const el = document.getElementById('typingIndicator');
-    if (el) {
-        el.style.opacity = '0';
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) {
+        indicator.style.opacity = '0';
     }
 }
 
-// Показать статус подключения
-function showStatus(text, type) {
+function showStatus(text, type = 'info') {
     let statusEl = document.getElementById('connectionStatus');
 
     if (!statusEl) {
         statusEl = document.createElement('div');
         statusEl.id = 'connectionStatus';
-        statusEl.style.cssText = 'position:fixed;top:10px;right:10px;padding:8px 16px;border-radius:4px;z-index:1000;font-size:14px;font-family:Share Tech Mono,monospace;border:1px solid;transition:opacity 0.3s;';
+        statusEl.className = 'connection-status-toast';
         document.body.appendChild(statusEl);
     }
 
-    statusEl.style.opacity = '1';
+    statusEl.className = `connection-status-toast ${type}`;
     statusEl.textContent = text;
-    statusEl.style.backgroundColor = type === 'success' ? 'rgba(0,255,136,0.15)' :
-        type === 'error' ? 'rgba(255,0,170,0.15)' : 'rgba(0,240,255,0.15)';
-    statusEl.style.color = type === 'success' ? '#00ff88' :
-        type === 'error' ? '#ff00aa' : '#00f0ff';
-    statusEl.style.borderColor = type === 'success' ? '#00ff88' :
-        type === 'error' ? '#ff00aa' : '#00f0ff';
+    statusEl.style.opacity = '1';
 
     setTimeout(() => {
         statusEl.style.opacity = '0';
-        setTimeout(() => statusEl.remove(), 300);
-    }, 3000);
+        setTimeout(() => {
+            statusEl.remove();
+        }, 300);
+    }, 2600);
 }
 
-// Вспомогательные функции
 function scrollToBottom() {
     const container = document.getElementById('messagesContainer');
     if (container) {
@@ -365,45 +394,45 @@ function scrollToBottom() {
     }
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 function formatTime(isoString) {
-    if (!isoString) return '';
+    if (!isoString) {
+        return '';
+    }
+
     return new Date(isoString).toLocaleTimeString('ru-RU', {
         hour: '2-digit',
         minute: '2-digit'
     });
 }
 
-// Вставка кнопки "Загрузить ещё"
 function addLoadMoreButton() {
     const container = document.getElementById('messagesContainer');
-    if (!container) return;
-    // Remove existing button if any
+    if (!container) {
+        return;
+    }
+
     const existing = document.getElementById('loadMoreBtn');
-    if (existing) existing.remove();
+    if (existing) {
+        existing.remove();
+    }
 
     const btn = document.createElement('button');
     btn.id = 'loadMoreBtn';
-    btn.textContent = '\u2B06 Загрузить ещё';
-    btn.style.cssText = 'display:block;width:100%;padding:8px;margin-bottom:8px;background:rgba(0,240,255,0.05);border:1px solid rgba(0,240,255,0.2);border-radius:4px;cursor:pointer;font-size:13px;color:#00f0ff;font-family:Share Tech Mono,monospace;';
+    btn.type = 'button';
+    btn.className = 'load-more-btn';
+    btn.textContent = 'Загрузить предыдущие сообщения';
     btn.onclick = loadMoreMessages;
+
     container.insertBefore(btn, container.firstChild);
 }
 
-// Обработчики DOM
 function setupEventListeners() {
     document.getElementById('sendBtn')?.addEventListener('click', sendMessage);
 
     const input = document.getElementById('messageInput');
-    input?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
+    input?.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
             sendMessage();
         }
     });
@@ -422,36 +451,30 @@ function setupEventListeners() {
     addLoadMoreButton();
 }
 
-// Начало приватного чата
 function startPrivateChat(userId, userName) {
     window.chatConfig.targetUserId = userId;
     window.chatConfig.targetUserName = userName;
 
     const chatTitle = document.getElementById('chatTitle');
     if (chatTitle) {
-        chatTitle.textContent = 'Приватный чат с ' + userName;
-        chatTitle.style.color = '#ff00aa';
+        chatTitle.textContent = `Личный чат с ${userName}`;
     }
 
     const container = document.getElementById('messagesContainer');
     if (container) {
         clearChildren(container);
-        const sysMsg = document.createElement('div');
-        sysMsg.className = 'system-message';
-        sysMsg.textContent = 'Начало приватного чата с ' + userName;
-        container.appendChild(sysMsg);
+        const note = document.createElement('div');
+        note.className = 'system-message';
+        note.textContent = `• Начат личный чат с ${userName}`;
+        container.appendChild(note);
     }
 
-    // Показываем кнопку "Вернуться"
     const backBtn = document.getElementById('backToPublicChat');
     if (backBtn) {
         backBtn.style.display = 'inline-block';
     }
-
-    console.log(`Started private chat with ${userName} (${userId})`);
 }
 
-// Вернуться в общий чат
 function returnToPublicChat() {
     window.chatConfig.targetUserId = null;
     window.chatConfig.targetUserName = null;
@@ -459,15 +482,13 @@ function returnToPublicChat() {
     const chatTitle = document.getElementById('chatTitle');
     if (chatTitle) {
         chatTitle.textContent = 'Общий чат';
-        chatTitle.style.color = '';
     }
 
     const container = document.getElementById('messagesContainer');
-    if (container) clearChildren(container);
+    if (container) {
+        clearChildren(container);
+    }
 
-    // Re-add load more button
     addLoadMoreButton();
-
     connection.invoke('GetPublicHistory').catch(console.error);
-    console.log('Returned to public chat');
 }

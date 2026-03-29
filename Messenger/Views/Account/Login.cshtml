@@ -4,25 +4,25 @@
 }
 
 <div class="auth-card">
-    <h2 class="auth-title">Вход</h2>
+    <h2 class="auth-title">Вход в NOVA MESSENGER</h2>
 
     <form asp-action="Login" method="post">
         <div asp-validation-summary="All" class="auth-errors"></div>
 
         <div class="auth-field">
-            <label>Имя пользователя:</label>
-            <input asp-for="Username" />
+            <label asp-for="Username">Имя пользователя</label>
+            <input asp-for="Username" autocomplete="username" />
         </div>
 
         <div class="auth-field">
-            <label>Пароль:</label>
-            <input asp-for="Password" type="password" />
+            <label asp-for="Password">Пароль</label>
+            <input asp-for="Password" type="password" autocomplete="current-password" />
         </div>
 
-        <button type="submit" class="btn-neon">Войти</button>
+        <button type="submit" class="btn-primary">Войти</button>
     </form>
 
     <p class="auth-footer">
-        Нет аккаунта? <a asp-action="Register" class="neon-link">Зарегистрироваться</a>
+        Нет аккаунта? <a asp-action="Register" class="auth-link">Зарегистрироваться</a>
     </p>
 </div>
