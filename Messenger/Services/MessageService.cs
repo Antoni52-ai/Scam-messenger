@@ -19,7 +19,10 @@ public class MessageService : IMessageService
     public async Task<List<ChatMessage>> GetLastMessagesAsync(int count)
     {
         var messages = await _db.Messages
-            .Where(m => m.TargetUserId == null && m.RoomId == null && !m.IsDeleted)
+            .Where(m => !m.IsDeleted &&
+                        !m.IsPrivate &&
+                        m.TargetUserId == null &&
+                        m.RoomId == null)
             .OrderByDescending(m => m.Timestamp)
             .Take(count)
             .OrderBy(m => m.Timestamp)
@@ -43,9 +46,10 @@ public class MessageService : IMessageService
         }
 
         var messages = await _db.Messages
-            .Where(m => m.TargetUserId == null &&
+            .Where(m => !m.IsDeleted &&
+                        !m.IsPrivate &&
+                        m.TargetUserId == null &&
                         m.RoomId == null &&
-                        !m.IsDeleted &&
                         m.Timestamp < pivot.Timestamp)
             .OrderByDescending(m => m.Timestamp)
             .Take(count)

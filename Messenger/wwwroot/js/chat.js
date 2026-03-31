@@ -70,16 +70,13 @@ function registerSignalRHandlers() {
     connection.on('UserRooms', renderRoomList);
 
     connection.on('NewMessage', (message) => {
-        if (message?.isPrivate) {
-            if (shouldDisplayPrivateMessage(message)) {
-                appendMessage(message);
-                scrollToBottom();
-            }
-
+        if (isPublicMessage(message) && state.mode === CHAT_MODE_PUBLIC) {
+            appendMessage(message);
+            scrollToBottom();
             return;
         }
 
-        if (state.mode === CHAT_MODE_PUBLIC) {
+        if (shouldDisplayPrivateMessage(message)) {
             appendMessage(message);
             scrollToBottom();
         }
@@ -341,13 +338,15 @@ function renderMessageHistory(messages) {
         return;
     }
 
+    const visibleMessages = filterHistoryForCurrentMode(messages || []);
+
     clearChildren(container);
 
     if (state.mode === CHAT_MODE_PUBLIC) {
         addLoadMoreButton();
     }
 
-    messages.forEach((message) => {
+    visibleMessages.forEach((message) => {
         container.appendChild(buildMessageElement(message));
     });
 
@@ -638,19 +637,42 @@ function appendMessage(message) {
 }
 
 function shouldDisplayPrivateMessage(message) {
-    if (state.mode !== CHAT_MODE_PRIVATE || !state.targetUserId) {
+    if (state.mode !== CHAT_MODE_PRIVATE || !state.targetUserId || isPublicMessage(message)) {
         return false;
     }
 
     const currentUserId = getCurrentUserId();
     const senderId = message.senderId || null;
-
-    if (!senderId || !currentUserId) {
-        return false;
+    if (senderId && currentUserId) {
+        const participantId = senderId === currentUserId ? message.targetUserId : senderId;
+        return participantId === state.targetUserId;
     }
 
-    const participantId = senderId === currentUserId ? message.targetUserId : senderId;
-    return participantId === state.targetUserId;
+    // Legacy fallback when senderId is not present in payload.
+    const currentUserName = getCurrentUserName();
+    const senderName = message.senderName || message.sender || '';
+
+    return senderName === currentUserName || senderName === state.targetUserName;
+}
+
+function isPublicMessage(message) {
+    return !message?.isPrivate && !message?.targetUserId && !message?.roomId;
+}
+
+function filterHistoryForCurrentMode(messages) {
+    if (state.mode === CHAT_MODE_PUBLIC) {
+        return messages.filter(isPublicMessage);
+    }
+
+    if (state.mode === CHAT_MODE_PRIVATE) {
+        return messages.filter((message) => shouldDisplayPrivateMessage(message));
+    }
+
+    if (state.mode === CHAT_MODE_ROOM && state.activeRoomId) {
+        return messages.filter((message) => message?.roomId === state.activeRoomId);
+    }
+
+    return [];
 }
 
 function loadMoreMessages() {
