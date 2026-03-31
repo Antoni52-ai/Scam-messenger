@@ -11,6 +11,9 @@
         public ChatRoom? Room { get; set; }
         public bool IsPrivate { get; set; }
         public string Content { get; set; } = string.Empty;
+        public string? FileUrl { get; set; }
+        public string? FileName { get; set; }
+        public long? FileSize { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
         public bool IsEdited { get; set; }
         public DateTime? EditedAt { get; set; }

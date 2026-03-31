@@ -13,5 +13,8 @@
         public DateTime? EditedAt { get; set; }
         public bool IsPrivate { get; set; }
         public string? RoomName { get; set; }
+        public string? FileUrl { get; set; }
+        public string? FileName { get; set; }
+        public long? FileSize { get; set; }
     }
 }

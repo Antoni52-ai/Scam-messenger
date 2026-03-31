@@ -16,6 +16,7 @@
         <div class="app-header-right">
             <span id="connectionStatusDot" class="connection-dot" title="Статус соединения"></span>
             <span class="app-username">@User.Identity!.Name</span>
+            <button id="soundToggleBtn" type="button" class="btn-sound-toggle" aria-pressed="true">Звук: вкл</button>
             <form asp-controller="Account" asp-action="Logout" method="post" class="logout-form">
                 <button type="submit" class="btn-logout">Выйти</button>
             </form>
@@ -43,6 +44,7 @@
         <main class="chat-area">
             <header class="chat-header">
                 <h3 id="chatTitle">Общий чат</h3>
+                <input id="messageSearchInput" class="message-search-input" type="search" placeholder="Поиск по сообщениям..." maxlength="120" />
                 <button id="backToPublicChat" style="display:none;">Вернуться в общий чат</button>
                 <span id="typingIndicator" class="typing-indicator"></span>
             </header>
@@ -55,6 +57,8 @@
             </div>
 
             <div class="chat-input">
+                <label class="btn-attach" for="fileInput" aria-label="Прикрепить файл">📎</label>
+                <input id="fileInput" type="file" hidden />
                 <textarea id="messageInput"
                           placeholder="Введите сообщение..."
                           rows="2"
@@ -82,6 +86,39 @@
                     <button type="submit" class="btn-send">Создать</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <div id="userProfileModal" class="modal-backdrop" hidden>
+        <div class="modal-card profile-modal-card" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+            <div class="modal-head">
+                <h4 id="profileTitle">Профиль пользователя</h4>
+                <button type="button" id="closeUserProfileModal" class="btn-modal-close" aria-label="Закрыть">×</button>
+            </div>
+
+            <div class="profile-modal-content">
+                <div class="profile-row">
+                    <span class="profile-label">Имя:</span>
+                    <span id="profileUserName" class="profile-value">-</span>
+                </div>
+                <div class="profile-row">
+                    <span class="profile-label">Email:</span>
+                    <span id="profileEmail" class="profile-value">-</span>
+                </div>
+                <div class="profile-row">
+                    <span class="profile-label">Статус:</span>
+                    <span id="profileStatus" class="profile-value">-</span>
+                </div>
+                <div class="profile-row">
+                    <span class="profile-label">Последняя активность:</span>
+                    <span id="profileLastActive" class="profile-value">-</span>
+                </div>
+            </div>
+
+            <div class="modal-actions profile-modal-actions">
+                <button id="profileKickBtn" type="button" class="btn-kick" hidden>Кикнуть из комнаты</button>
+                <button id="profileWriteBtn" type="button" class="btn-send">Написать</button>
+            </div>
         </div>
     </div>
 </section>

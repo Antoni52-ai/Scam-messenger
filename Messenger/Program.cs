@@ -70,7 +70,7 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler("/Chat/Index");
     app.UseHsts();
 }
 

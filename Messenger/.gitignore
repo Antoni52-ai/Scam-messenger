@@ -36,3 +36,6 @@ publish/
 # Temporary files
 *.tmp
 *.temp
+
+# Runtime uploads
+wwwroot/uploads/

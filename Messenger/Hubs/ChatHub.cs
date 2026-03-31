@@ -42,6 +42,14 @@ public class ChatHub : Hub
             ConnectedAt = DateTime.UtcNow
         };
 
+        var user = await _db.Users.FindAsync(userId);
+        if (user != null)
+        {
+            user.IsOnline = true;
+            user.LastActiveAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
         _logger.LogInformation("User connected: {UserName} ({ConnectionId})", userName, Context.ConnectionId);
 
         await Clients.Others.SendAsync("UserJoined", new { userName, userId });
@@ -62,6 +70,18 @@ public class ChatHub : Hub
         {
             _logger.LogInformation("User disconnected: {UserName}", user.UserName);
             await Clients.All.SendAsync("UserLeft", new { user.UserName, user.UserId });
+
+            var hasOtherConnections = _connections.Values.Any(c => c.UserId == user.UserId);
+            if (!hasOtherConnections)
+            {
+                var dbUser = await _db.Users.FindAsync(user.UserId);
+                if (dbUser != null)
+                {
+                    dbUser.IsOnline = false;
+                    dbUser.LastActiveAt = DateTime.UtcNow;
+                    await _db.SaveChangesAsync();
+                }
+            }
         }
 
         await base.OnDisconnectedAsync(exception);
@@ -212,6 +232,104 @@ public class ChatHub : Hub
         }
 
         await Clients.Group(roomId).SendAsync("RoomMessage", message);
+    }
+
+    public async Task SendFileMessage(
+        string fileUrl,
+        string fileName,
+        long fileSize,
+        string? targetUserId = null,
+        string? roomId = null)
+    {
+        if (string.IsNullOrWhiteSpace(fileUrl) ||
+            string.IsNullOrWhiteSpace(fileName) ||
+            fileSize <= 0)
+        {
+            return;
+        }
+
+        var normalizedFileUrl = fileUrl.Trim();
+        if (!normalizedFileUrl.StartsWith("/uploads/", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new HubException("Некорректный файл.");
+        }
+
+        var sanitizedFileName = Sanitize(fileName);
+        if (string.IsNullOrWhiteSpace(sanitizedFileName))
+        {
+            return;
+        }
+
+        var senderId = GetCurrentUserId();
+        var senderName = GetCurrentUserName(senderId);
+        var messageId = Guid.NewGuid().ToString();
+        var timestamp = DateTime.UtcNow;
+        var content = $"[Файл: {sanitizedFileName}]";
+
+        var message = new MessageDto
+        {
+            Id = messageId,
+            Sender = senderName,
+            SenderId = senderId,
+            Content = content,
+            Timestamp = timestamp,
+            IsPrivate = false,
+            FileUrl = normalizedFileUrl,
+            FileName = sanitizedFileName,
+            FileSize = fileSize
+        };
+
+        var chatMessage = new ChatMessage
+        {
+            Id = messageId,
+            Sender = senderId,
+            SenderName = senderName,
+            Content = content,
+            Timestamp = timestamp,
+            FileUrl = normalizedFileUrl,
+            FileName = sanitizedFileName,
+            FileSize = fileSize
+        };
+
+        if (!string.IsNullOrWhiteSpace(roomId))
+        {
+            var room = await _db.Rooms.AsNoTracking().FirstOrDefaultAsync(r => r.Id == roomId);
+            if (room == null)
+            {
+                throw new HubException("Комната не найдена.");
+            }
+
+            var isMember = await _db.RoomMembers.AnyAsync(rm => rm.RoomId == roomId && rm.UserId == senderId);
+            if (!isMember)
+            {
+                throw new HubException("Вы не состоите в этой комнате.");
+            }
+
+            message.RoomId = roomId;
+            message.RoomName = room.Name;
+            chatMessage.RoomId = roomId;
+            chatMessage.RoomName = room.Name;
+
+            await _messageService.SaveMessageAsync(chatMessage);
+            await Clients.Group(roomId).SendAsync("RoomMessage", message);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(targetUserId))
+        {
+            message.TargetUserId = targetUserId;
+            message.IsPrivate = true;
+
+            chatMessage.TargetUserId = targetUserId;
+            chatMessage.IsPrivate = true;
+
+            await _messageService.SaveMessageAsync(chatMessage);
+            await Clients.Users(new[] { senderId, targetUserId }).SendAsync("NewMessage", message);
+            return;
+        }
+
+        await _messageService.SaveMessageAsync(chatMessage);
+        await Clients.All.SendAsync("NewMessage", message);
     }
 
     public async Task SendTyping(string? targetUserId = null)
@@ -381,6 +499,73 @@ public class ChatHub : Hub
         await Clients.Caller.SendAsync("UserRooms", rooms);
     }
 
+    public async Task KickMember(string roomId, string targetUserId)
+    {
+        if (string.IsNullOrWhiteSpace(roomId) || string.IsNullOrWhiteSpace(targetUserId))
+        {
+            return;
+        }
+
+        var currentUserId = GetCurrentUserId();
+        var isAdmin = await IsRoomAdmin(roomId, currentUserId);
+        if (!isAdmin)
+        {
+            throw new HubException("Недостаточно прав для удаления участника.");
+        }
+
+        var member = await _db.RoomMembers.FindAsync(roomId, targetUserId);
+        if (member == null)
+        {
+            return;
+        }
+
+        _db.RoomMembers.Remove(member);
+        await _db.SaveChangesAsync();
+
+        var targetConnections = _connections.Values
+            .Where(c => c.UserId == targetUserId)
+            .Select(c => c.ConnectionId)
+            .Distinct()
+            .ToList();
+
+        foreach (var connectionId in targetConnections)
+        {
+            await Groups.RemoveFromGroupAsync(connectionId, roomId);
+        }
+
+        await Clients.User(targetUserId).SendAsync("KickedFromRoom", new { roomId });
+
+        await GetUserRooms();
+    }
+
+    public async Task GetUserProfile(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        var user = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => new
+            {
+                userId = u.Id,
+                userName = u.UserName ?? string.Empty,
+                email = u.Email ?? string.Empty,
+                isOnline = u.IsOnline,
+                lastActiveAt = u.LastActiveAt
+            })
+            .FirstOrDefaultAsync();
+
+        if (user == null)
+        {
+            return;
+        }
+
+        await Clients.Caller.SendAsync("UserProfile", user);
+    }
+
     public async Task GetMoreMessages(string lastMessageId)
     {
         try
@@ -474,7 +659,12 @@ public class ChatHub : Hub
 
         var userId = GetCurrentUserId();
         var userName = GetCurrentUserName(userId);
-        if (!IsOwner(message, userId, userName))
+        var isOwner = IsOwner(message, userId, userName);
+        var canDeleteAsRoomAdmin = !isOwner &&
+                                   !string.IsNullOrWhiteSpace(message.RoomId) &&
+                                   await IsRoomAdmin(message.RoomId, userId);
+
+        if (!isOwner && !canDeleteAsRoomAdmin)
         {
             return;
         }
@@ -553,6 +743,12 @@ public class ChatHub : Hub
         await Clients.All.SendAsync("MessageDeleted", payload);
     }
 
+    private async Task<bool> IsRoomAdmin(string roomId, string userId)
+    {
+        return await _db.RoomMembers.AnyAsync(rm =>
+            rm.RoomId == roomId && rm.UserId == userId && rm.IsAdmin);
+    }
+
     private static bool IsOwner(ChatMessage message, string userId, string userName)
     {
         return string.Equals(message.Sender, userId, StringComparison.OrdinalIgnoreCase) ||
@@ -587,7 +783,10 @@ public class ChatHub : Hub
             Timestamp = message.Timestamp,
             IsEdited = message.IsEdited,
             EditedAt = message.EditedAt,
-            IsPrivate = message.IsPrivate || message.TargetUserId != null
+            IsPrivate = message.IsPrivate || message.TargetUserId != null,
+            FileUrl = message.FileUrl,
+            FileName = message.FileName,
+            FileSize = message.FileSize
         };
     }
 
