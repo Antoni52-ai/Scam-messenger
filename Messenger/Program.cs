@@ -29,7 +29,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 
 // 🔹 Services
-builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+builder.Services.AddSingleton<IEncryptionService, EncryptionService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
 
 // 🔹 CORS
